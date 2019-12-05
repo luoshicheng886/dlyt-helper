@@ -1,0 +1,16 @@
+<!DOCTYPE RCC><RCC version="2.0">
+<qresource>
+    <file alias="exit-icon">icons/exit.png</file>
+    <file alias="home-icon">icons/home.png</file>
+    <file alias="go_back-icon">icons/go-back.png</file>
+    <file alias="go_forward-icon">icons/go-forward.png</file>
+    <file alias="dlyt_helper-icon">icons/dlyt-helper.png</file>
+    <file alias="download-icon">icons/download.png</file>
+    <file alias="settings-icon">icons/settings.png</file>
+    <file alias="folder-icon">icons/folder.png</file>
+    <file alias="audio_only-icon">icons/audio_only.png</file>
+    <file alias="video_only-icon">icons/video_only.png</file>
+    <file alias="video-icon">icons/video.png</file>
+    <file alias="mono-font">fonts/LiberationMono-Bold.ttf</file>
+</qresource>
+</RCC>
