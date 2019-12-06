@@ -1,4 +1,5 @@
 [General]
+dl_cap=True
 output_path=
-stream_type=adaptive
-subtype=webm
+stream_type=all
+subtype=mp4

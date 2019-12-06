@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from PyQt5.QtCore import QSettings, QUrl, QSize, QRect, pyqtSignal, QThread, Qt
 from PyQt5.QtGui import QIcon, QFontDatabase, QFont
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (QWidget, QProgressBar, QComboBox, QDialogButtonBox, QDialog, QLineEdit, QDesktopWidget,
                              QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QSizePolicy, QFileDialog, QLabel,
-                             QRadioButton, QGroupBox)
+                             QRadioButton, QGroupBox, QCheckBox)
 from pytube import YouTube
 # noinspection PyUnresolvedReferences
 import resource
@@ -19,12 +21,14 @@ if subtype == '':
 stream_type = settings.value('stream_type', '')
 if stream_type == '':
     stream_type = 'all'
+dl_cap = settings.value('dl_cap', True, type=bool)
 it_list = []
 download_ongoing = False
 
 
 class GetItem(QThread):
     addItem = pyqtSignal(str, str)
+    addCaption = pyqtSignal(str)
 
     def __init__(self, url):
         super().__init__()
@@ -37,31 +41,35 @@ class GetItem(QThread):
         it_list.clear()
         if 'list' not in self.url:
             self.yt = YouTube(self.url)
+            # get stream list
             if stream_type == 'progressive':
-                items = self.yt.streams.filter(progressive=True, subtype=subtype).all()
+                streams = self.yt.streams.filter(progressive=True, subtype=subtype).all()
             elif stream_type == 'adaptive':
-                items = self.yt.streams.filter(adaptive=True, subtype=subtype).all()
+                streams = self.yt.streams.filter(adaptive=True, subtype=subtype).all()
             else:
-                items = self.yt.streams.filter(subtype=subtype).all()
-            for d in items:
-                # print(d.default_filename, d.itag, d.mime_type, d.resolution, d.fps,
-                #       d.video_codec, d.audio_codec, d.filesize)
-                if d.video_codec is None:
-                    item_txt = 'Format=%-4s abr=%-7s fps=%-3d Size=%-4.3fMB' % (d.mime_type.split('/')[1], d.abr,
-                                                                                d.fps, d.filesize / 1024 / 1024)
+                streams = self.yt.streams.filter(subtype=subtype).all()
+            for s in streams:
+                # print(s.default_filename, s.itag, s.mime_type, s.resolution, s.fps,
+                #       s.video_codec, s.audio_codec, s.filesize)
+                if s.video_codec is None:
+                    item_txt = 'Format=%-4s abr=%-7s fps=%-3d Size=%-4.3fMB' % (s.mime_type.split('/')[1], s.abr,
+                                                                                s.fps, s.filesize / 1024 / 1024)
                 else:
-                    item_txt = 'Format=%-4s res=%-7s fps=%-3d Size=%-4.3fMB' % (d.mime_type.split('/')[1], d.resolution,
-                                                                                d.fps, d.filesize / 1024 / 1024)
-                if d.audio_codec is None:
+                    item_txt = 'Format=%-4s res=%-7s fps=%-3d Size=%-4.3fMB' % (s.mime_type.split('/')[1], s.resolution,
+                                                                                s.fps, s.filesize / 1024 / 1024)
+                if s.audio_codec is None:
                     codec = 'V'
                     self.addItem.emit(':/video_only-icon', item_txt)
-                elif d.video_codec is None:
+                elif s.video_codec is None:
                     codec = 'A'
                     self.addItem.emit(':/audio_only-icon', item_txt)
                 else:
                     codec = 'AV'
                     self.addItem.emit(':/video-icon', item_txt)
-                it_list.append(dict(id=d.itag, res=d.abr if d.video_codec is None else d.resolution, codec=codec))
+                it_list.append(dict(id=s.itag, res=s.abr if s.video_codec is None else s.resolution, codec=codec))
+            # get caption list
+            for c in self.yt.captions.all():
+                self.addCaption.emit(c.name)
 
 
 # noinspection PyUnusedLocal
@@ -69,8 +77,9 @@ class DownLoad(QThread):
     valueChanged = pyqtSignal(float)
     dlCompleted = pyqtSignal()
 
-    def __init__(self, url, idx):
+    def __init__(self, url, idx, cap_idx):
         super().__init__()
+        self.cap = cap_idx
         self.url = url
         self.idx = idx
         self.per = 0.0
@@ -84,6 +93,9 @@ class DownLoad(QThread):
         while not self.dlFinished:
             continue
         # print('%s completed!' % stream.title)
+        if dl_cap:
+            with open(f_name + '.%s' % yt.captions.all()[self.cap].code + '.srt', 'w') as fp:
+                fp.write(yt.captions.all()[self.cap].generate_srt_captions())
 
     def dl_progress(self, stream, chunk, handle, rem_bytes):
         # print('%.2f%% completed' % per)
@@ -100,8 +112,7 @@ class MainWidget(QWidget):
         super().__init__()
         fontDB = QFontDatabase()
         fontDB.addApplicationFont(':/mono-font')
-        # for f in fontDB.families():
-        #     print(f)
+        fontDB.addApplicationFont(':/Taipei-font')
         screen = QDesktopWidget().screenGeometry()
         self.width, self.height = screen.width(), screen.height()
         self.html = ''
@@ -116,14 +127,6 @@ class MainWidget(QWidget):
         btnExit.setIconSize(QSize(32, 32))
         btnExit.setToolTip('Exit')
         btnExit.clicked.connect(QApplication.quit)
-        self.cmbBox = QComboBox(self)
-        self.cmbBox.setMinimumHeight(40)
-        # font = self.cmbBox.font()
-        font = QFont('Liberation Mono')
-        font.setPointSize(14)
-        self.cmbBox.setFont(font)
-        self.cmbBox.setIconSize(QSize(24, 24))
-        self.cmbBox.currentIndexChanged.connect(self.onIndexChanged)
         self.btnHome = QPushButton('', self)
         self.btnHome.setIcon(QIcon(':/home-icon'))
         self.btnHome.setIconSize(QSize(32, 32))
@@ -141,6 +144,21 @@ class MainWidget(QWidget):
         self.btnNext.setToolTip('Forward')
         self.btnNext.clicked.connect(self.goForward)
         self.btnNext.setDisabled(True)
+        self.cmbDownList = QComboBox(self)
+        self.cmbDownList.setMinimumHeight(40)
+        # font = self.cmbDownList.font()
+        font = QFont('Liberation Mono')
+        font.setPointSize(14)
+        self.cmbDownList.setFont(font)
+        self.cmbDownList.setIconSize(QSize(24, 24))
+        self.cmbDownList.currentIndexChanged.connect(self.onIndexChanged)
+        self.cmbDownList.setToolTip('Select a stream to download')
+        self.cmbCapsList = QComboBox(self)
+        self.cmbCapsList.setMinimumHeight(40)
+        font = QFont('Taipei Sans TC Beta')
+        font.setPointSize(14)
+        self.cmbCapsList.setFont(font)
+        self.cmbCapsList.setToolTip('Select a caption/subtitle to download')
         btnSettings = QPushButton('', self)
         btnSettings.setIcon(QIcon(':/settings-icon'))
         btnSettings.setIconSize(QSize(32, 32))
@@ -161,7 +179,8 @@ class MainWidget(QWidget):
         hBox1.addWidget(self.btnHome, 0)
         hBox1.addWidget(self.btnBack, 0)
         hBox1.addWidget(self.btnNext, 0)
-        hBox1.addWidget(self.cmbBox, 1)
+        hBox1.addWidget(self.cmbDownList, 1)
+        hBox1.addWidget(self.cmbCapsList, 0)
         hBox1.addWidget(btnSettings, 0)
         hBox1.addWidget(self.btnDLoad, 0)
         vBox = QVBoxLayout()
@@ -189,7 +208,8 @@ class MainWidget(QWidget):
             self.btnHome.setEnabled(True)
         else:
             self.btnHome.setDisabled(True)
-        self.cmbBox.clear()
+        self.cmbDownList.clear()
+        self.cmbCapsList.clear()
         url = self.web_view.page().url().url()
         if 'video-id' in self.html and '?v=' in url:
             # fp = open(self.web_view.title() + '.html', 'w')
@@ -197,6 +217,7 @@ class MainWidget(QWidget):
             # fp.close()
             self.GI = GetItem(url)
             self.GI.addItem.connect(self.onAddItem)
+            self.GI.addCaption.connect(self.onAddCaption)
             self.GI.finished.connect(self.onAddItemFinished)
             self.GI.start()
         else:
@@ -220,13 +241,17 @@ class MainWidget(QWidget):
         download_ongoing = True
         self.btnDLoad.setDisabled(True)
         self.progressBar.setValue(0)
-        self.DL = DownLoad(self.web_view.page().url().url(), self.cmbBox.currentIndex())
+        self.DL = DownLoad(self.web_view.page().url().url(), self.cmbDownList.currentIndex(),
+                           self.cmbCapsList.currentIndex())
         self.DL.valueChanged.connect(self.onValueChanged)
         self.DL.dlCompleted.connect(self.onDlCompleted)
         self.DL.start()
 
     def onAddItem(self, icon, item):
-        self.cmbBox.addItem(QIcon(icon), item)
+        self.cmbDownList.addItem(QIcon(icon), item)
+
+    def onAddCaption(self, cap):
+        self.cmbCapsList.addItem(cap)
 
     def onAddItemFinished(self):
         if not download_ongoing:
@@ -250,8 +275,7 @@ class MainWidget(QWidget):
         sWnd = SettingsDlg(self.width, self.height)
         sWnd.exec()
         if sWnd.SettingsChanged:
-            print('Settings saved!')
-            # settings.sync()
+            # print('Settings saved!')
             if self.web_view.title() != 'YouTube' and self.web_view.title() != 'https://www.youtube.com':
                 self.web_view.reload()
 
@@ -324,10 +348,14 @@ class SettingsDlg(QDialog):
             self.btnWebm.setChecked(True)
         else:
             self.btnMp4.setChecked(True)
+        self.chbDlCap = QCheckBox(self)
+        self.chbDlCap.setText('Download a caption if available')
+        self.chbDlCap.setChecked(dl_cap)
         vBox = QVBoxLayout()
         vBox.addLayout(hBox1)
         vBox.addWidget(gbStream)
         vBox.addWidget(gbSubtype)
+        vBox.addWidget(self.chbDlCap)
         self.btnBox = QDialogButtonBox(self)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -358,7 +386,7 @@ class SettingsDlg(QDialog):
             subtype = sub_type
 
     def onOk(self):
-        global output_path
+        global output_path, dl_cap
         output_path = self.lnEdit.text()
         if settings.value('output_path') != output_path:
             settings.setValue('output_path', output_path)
@@ -368,6 +396,10 @@ class SettingsDlg(QDialog):
             self.SettingsChanged = True
         if settings.value('subtype') != subtype:
             settings.setValue('subtype', subtype)
+            self.SettingsChanged = True
+        dl_cap = self.chbDlCap.isChecked()
+        if settings.value('dl_cap', type=bool) != dl_cap:
+            settings.setValue('dl_cap', 'True' if dl_cap else 'False')
             self.SettingsChanged = True
         self.close()
 

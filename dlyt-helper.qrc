@@ -12,5 +12,6 @@
     <file alias="video_only-icon">icons/video_only.png</file>
     <file alias="video-icon">icons/video.png</file>
     <file alias="mono-font">fonts/LiberationMono-Bold.ttf</file>
+    <file alias="Taipei-font">fonts/TaipeiSansTCBeta-Regular.ttf</file>
 </qresource>
 </RCC>
