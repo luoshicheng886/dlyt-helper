@@ -112,7 +112,7 @@ class MainWidget(QWidget):
         super().__init__()
         fontDB = QFontDatabase()
         fontDB.addApplicationFont(':/mono-font')
-        fontDB.addApplicationFont(':/Taipei-font')
+        # fontDB.addApplicationFont(':/Taipei-font')
         screen = QDesktopWidget().screenGeometry()
         self.width, self.height = screen.width(), screen.height()
         self.html = ''
@@ -155,7 +155,8 @@ class MainWidget(QWidget):
         self.cmbDownList.setToolTip('Select a stream to download')
         self.cmbCapsList = QComboBox(self)
         self.cmbCapsList.setMinimumHeight(40)
-        font = QFont('Taipei Sans TC Beta')
+        # font = QFont('Taipei Sans TC Beta')
+        font = self.cmbCapsList.font()
         font.setPointSize(14)
         self.cmbCapsList.setFont(font)
         self.cmbCapsList.setToolTip('Select a caption/subtitle to download')
