@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QWidget, QProgressBar, QComboBox, QDialogButtonBox,
                              QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QSizePolicy, QFileDialog, QLabel,
                              QRadioButton, QGroupBox, QCheckBox)
 from pytube import YouTube
+from pytube.helpers import safe_filename
 # noinspection PyUnresolvedReferences
 import resource
 
@@ -94,7 +95,7 @@ class DownLoad(QThread):
             continue
         # print('%s completed!' % stream.title)
         if dl_cap:
-            with open(f_name + '.%s' % yt.captions.all()[self.cap].code + '.srt', 'w') as fp:
+            with open(safe_filename(f_name) + '.%s' % yt.captions.all()[self.cap].code + '.srt', 'w') as fp:
                 fp.write(yt.captions.all()[self.cap].generate_srt_captions())
 
     def dl_progress(self, stream, chunk, handle, rem_bytes):

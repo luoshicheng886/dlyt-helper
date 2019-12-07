@@ -15,3 +15,7 @@ $ pip install PyQt5
 $ pip install PyQtWebEngine
 $ pip install pytube
 ```
+Please use *pyrcc5* to compile resources to embed icons and fonts otherwise they won't be seen.
+```bash
+$ pyrcc5 dlyt-helper.qrc -o resource.py
+```
