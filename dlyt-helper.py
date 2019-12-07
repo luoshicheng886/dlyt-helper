@@ -191,7 +191,7 @@ class MainWidget(QWidget):
         vBox.addWidget(self.progressBar)
         self.setLayout(vBox)
         self.setWindowTitle('Youtube Download Helper')
-        self.setGeometry(QRect((self.width - 760) / 2, (self.height - 550) / 2, 760, 550))
+        self.setGeometry(QRect(round((self.width - 760) / 2), round((self.height - 550) / 2), 760, 550))
         self.setMinimumSize(QSize(760, 550))
 
     def store_html(self, html):
@@ -288,7 +288,7 @@ class SettingsDlg(QDialog):
         super().__init__()
         self.SettingsChanged = False
         self.setWindowTitle('Settings')
-        self.setGeometry(QRect((width - 400) / 2, (height - 200) / 2, 400, 100))
+        self.setGeometry(QRect(round((width - 400) / 2), round((height - 200) / 2), 400, 100))
         hBox1 = QHBoxLayout()
         self.lbPath = QLabel(self)
         self.lbPath.setText('File path:')
